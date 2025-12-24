@@ -81,7 +81,7 @@ class GestureStateMachine:
             self.long_press_callbacks[gesture] = long_press_callback
         logger.debug(f"Registered callbacks for gesture: {gesture}")
     
-    def process_gesture(self, gesture_event: GestureEvent) -> Dict:
+    def process_gesture(self, gesture_event: GestureEvent) -> dict:
         """
         Process gesture through state machine
         
@@ -120,7 +120,7 @@ class GestureStateMachine:
         
         return result
     
-    def _handle_idle_state(self, event: GestureEvent, current_time: float) -> Dict:
+    def _handle_idle_state(self, event: GestureEvent, current_time: float) -> dict:
         """Handle IDLE state logic"""
         if (event.gesture != 'none' and event.gesture != 'uncertain' and 
             event.confidence >= self.detection_threshold):
@@ -138,7 +138,7 @@ class GestureStateMachine:
         
         return {}
     
-    def _handle_detecting_state(self, event: GestureEvent, current_time: float) -> Dict:
+    def _handle_detecting_state(self, event: GestureEvent, current_time: float) -> dict:
         """Handle DETECTING state logic"""
         detection_duration = current_time - self.detecting_start_time
         
@@ -176,7 +176,7 @@ class GestureStateMachine:
         
         return {'detection_duration': detection_duration}
     
-    def _handle_confirmed_state(self, event: GestureEvent, current_time: float) -> Dict:
+    def _handle_confirmed_state(self, event: GestureEvent, current_time: float) -> dict:
         """Handle CONFIRMED state logic"""
         confirmed_duration = current_time - self.confirmed_start_time
         
@@ -215,7 +215,7 @@ class GestureStateMachine:
         
         return {'confirmed_duration': confirmed_duration}
     
-    def _handle_cooldown_state(self, event: GestureEvent, current_time: float) -> Dict:
+    def _handle_cooldown_state(self, event: GestureEvent, current_time: float) -> dict:
         """Handle COOLDOWN state logic"""
         cooldown_duration = current_time - self.state_start_time
         
@@ -232,7 +232,7 @@ class GestureStateMachine:
             'cooldown_remaining': self.cooldown_time - cooldown_duration
         }
     
-    def _handle_disabled_state(self, event: GestureEvent, current_time: float) -> Dict:
+    def _handle_disabled_state(self, event: GestureEvent, current_time: float) -> dict:
         """Handle DISABLED state logic"""
         # Check for emergency re-enable gesture (e.g., specific gesture sequence)
         if event.gesture == 'palm' and event.confidence > 0.9:
@@ -250,7 +250,7 @@ class GestureStateMachine:
         
         logger.debug(f"State transition: {old_state.value} → {new_state.value}")
     
-    def _execute_action(self, gesture: str, action_type: str) -> Dict:
+    def _execute_action(self, gesture: str, action_type: str) -> dict:
         """Execute action for gesture"""
         try:
             if action_type == 'short_press' and gesture in self.action_callbacks:
@@ -281,7 +281,7 @@ class GestureStateMachine:
         self._transition_to_state(GestureState.IDLE, time.time())
         logger.info("Gesture recognition force ENABLED")
     
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get state machine statistics"""
         current_time = time.time()
         return {

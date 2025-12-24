@@ -316,7 +316,7 @@ class AsyncGesturePipeline:
         except queue.Empty:
             return None
     
-    def get_performance_metrics(self) -> Dict:
+    def get_performance_metrics(self) -> dict:
         """Get current performance metrics"""
         inference_times = self.metrics['inference_time_ms']
         latency_times = self.metrics['total_latency_ms']
