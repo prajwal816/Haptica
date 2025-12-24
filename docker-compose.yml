@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  haptica:
+    build: .
+    container_name: haptica-app
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config:/app/config
+      - ./models:/app/models
+      - ./logs:/app/logs
+    devices:
+      - /dev/video0:/dev/video0  # Camera access
+    environment:
+      - HAPTICA_ENV=development
+      - HAPTICA_LOG_LEVEL=DEBUG
+    restart: unless-stopped
+    depends_on:
+      - redis
+    networks:
+      - haptica-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: haptica-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - haptica-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: haptica-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - haptica
+    restart: unless-stopped
+    networks:
+      - haptica-network
+
+  prometheus:
+    image: prom/prometheus
+    container_name: haptica-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+    networks:
+      - haptica-network
+
+  grafana:
+    image: grafana/grafana
+    container_name: haptica-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    restart: unless-stopped
+    networks:
+      - haptica-network
+
+volumes:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  haptica-network:
+    driver: bridge

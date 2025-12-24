@@ -1,0 +1,36 @@
+{
+  "gesture_actions": {
+    "palm": {
+      "type": "keyboard",
+      "action": "space",
+      "description": "Play/Pause media"
+    },
+    "fist": {
+      "type": "keyboard", 
+      "action": "ctrl+c",
+      "description": "Copy"
+    },
+    "thumb": {
+      "type": "system",
+      "action": "volume_up",
+      "description": "Increase volume"
+    },
+    "index": {
+      "type": "mouse",
+      "action": "left_click",
+      "description": "Left mouse click"
+    },
+    "ok": {
+      "type": "keyboard",
+      "action": "enter",
+      "description": "Confirm action"
+    },
+    "c_shape": {
+      "type": "api",
+      "action": "http://localhost:8080/gesture/c",
+      "description": "Custom API call"
+    }
+  },
+  "action_cooldown": 1.0,
+  "enable_feedback": true
+}
