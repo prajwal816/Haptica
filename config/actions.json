@@ -3,34 +3,89 @@
     "palm": {
       "type": "keyboard",
       "action": "space",
-      "description": "Play/Pause media"
+      "description": "Play/Pause media",
+      "long_press_action": "media",
+      "long_press_command": "stop"
     },
     "fist": {
       "type": "keyboard", 
       "action": "ctrl+c",
-      "description": "Copy"
+      "description": "Copy",
+      "long_press_action": "keyboard",
+      "long_press_command": "ctrl+x"
     },
     "thumb": {
-      "type": "system",
+      "type": "media",
       "action": "volume_up",
-      "description": "Increase volume"
+      "description": "Increase volume",
+      "long_press_action": "media",
+      "long_press_command": "volume_up"
     },
     "index": {
       "type": "mouse",
       "action": "left_click",
-      "description": "Left mouse click"
+      "description": "Left mouse click",
+      "long_press_action": "mouse",
+      "long_press_command": "left_click"
     },
     "ok": {
       "type": "keyboard",
       "action": "enter",
-      "description": "Confirm action"
+      "description": "Confirm action",
+      "long_press_action": "keyboard",
+      "long_press_command": "ctrl+enter"
     },
     "c_shape": {
       "type": "api",
       "action": "http://localhost:8080/gesture/c",
-      "description": "Custom API call"
+      "description": "Custom API call",
+      "method": "POST",
+      "payload": {"gesture": "c_shape", "action": "custom"}
+    },
+    "l_shape": {
+      "type": "media",
+      "action": "next_track",
+      "description": "Next track",
+      "long_press_action": "media",
+      "long_press_command": "prev_track"
+    },
+    "down": {
+      "type": "media",
+      "action": "volume_down",
+      "description": "Decrease volume",
+      "long_press_action": "media",
+      "long_press_command": "volume_mute"
     }
   },
-  "action_cooldown": 1.0,
-  "enable_feedback": true
+  "action_cooldown": 0.5,
+  "enable_feedback": true,
+  "enable_long_press": true,
+  "safety": {
+    "max_actions_per_minute": 60,
+    "enable_emergency_disable": true,
+    "emergency_gesture": "palm",
+    "emergency_confidence": 0.95,
+    "action_whitelist": ["keyboard", "mouse", "media", "api"],
+    "restricted_commands": ["shutdown", "reboot", "format"]
+  },
+  "plugins": {
+    "keyboard": {
+      "enabled": true,
+      "cooldown": 0.3
+    },
+    "mouse": {
+      "enabled": true,
+      "cooldown": 0.2
+    },
+    "media": {
+      "enabled": true,
+      "cooldown": 0.5
+    },
+    "api": {
+      "enabled": true,
+      "cooldown": 0.5,
+      "base_url": "http://localhost:8080",
+      "timeout": 5.0
+    }
+  }
 }
