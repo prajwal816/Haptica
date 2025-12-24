@@ -153,7 +153,7 @@ class AdaptiveROICalibrator:
         
         return smoothed_roi
     
-    def get_calibration_stats(self) -> Dict:
+    def get_calibration_stats(self) -> dict:
         """Get calibration statistics for monitoring"""
         if not self.distance_history or not self.roi_history:
             return {}
