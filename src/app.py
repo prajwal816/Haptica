@@ -101,7 +101,7 @@ class EnhancedHapticaEngine:
                     'long_press_threshold': 2.0
                 },
                 'async_pipeline': {
-                    'enable_async': True,
+                    'enable_async': False,  # Disable async for now
                     'max_queue_size': 10,
                     'max_workers': 3,
                     'target_fps': 30.0
