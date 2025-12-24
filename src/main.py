@@ -56,7 +56,7 @@ class HapticaEngine:
             self.hand_detector = HandDetector(confidence=0.7, max_hands=1)
             
             # Image transforms
-            self.transforms = ImageTransforms(target_size=(224, 224))
+            self.transforms = ImageTransforms(target_size=(50, 50))
             
             # Gesture predictor
             labels_path = self.config_dir / "labels.json"

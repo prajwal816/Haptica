@@ -10,7 +10,7 @@ from loguru import logger
 class ImageTransforms:
     """Image preprocessing pipeline for gesture recognition model"""
     
-    def __init__(self, target_size: Tuple[int, int] = (224, 224), normalize: bool = True):
+    def __init__(self, target_size: Tuple[int, int] = (50, 50), normalize: bool = True):
         self.target_size = target_size
         self.normalize = normalize
         logger.info(f"Transforms initialized: size={target_size}, normalize={normalize}")
@@ -32,9 +32,12 @@ class ImageTransforms:
             # Resize to target dimensions
             processed = cv2.resize(roi, self.target_size, interpolation=cv2.INTER_AREA)
             
-            # Convert to RGB if needed (model expects RGB)
-            if len(processed.shape) == 3 and processed.shape[2] == 3:
-                processed = cv2.cvtColor(processed, cv2.COLOR_BGR2RGB)
+            # Convert to grayscale (model expects single channel)
+            if len(processed.shape) == 3:
+                processed = cv2.cvtColor(processed, cv2.COLOR_BGR2GRAY)
+            
+            # Add channel dimension for grayscale
+            processed = np.expand_dims(processed, axis=-1)
             
             # Normalize pixel values
             if self.normalize:
@@ -80,7 +83,7 @@ class ImageTransforms:
         """Validate preprocessed tensor"""
         try:
             # Check shape
-            expected_shape = (1, self.target_size[0], self.target_size[1], 3)
+            expected_shape = (1, self.target_size[0], self.target_size[1], 1)
             if tensor.shape != expected_shape:
                 logger.warning(f"Unexpected tensor shape: {tensor.shape}, expected: {expected_shape}")
                 return False
