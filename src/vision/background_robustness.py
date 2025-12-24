@@ -4,7 +4,7 @@ Adaptive image enhancement for real-world conditions
 """
 import cv2
 import numpy as np
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict
 from loguru import logger
 
 
@@ -43,7 +43,7 @@ class BackgroundRobustnessProcessor:
                    f"CLAHE={enable_clahe}, BG_suppress={enable_background_suppression}, "
                    f"skin_mask={enable_skin_masking}")
     
-    def enhance_frame(self, frame: np.ndarray) -> Tuple[np.ndarray, Dict]:
+    def enhance_frame(self, frame: np.ndarray) -> Tuple[np.ndarray, dict]:
         """
         Apply comprehensive frame enhancement
         
@@ -184,7 +184,7 @@ class BackgroundRobustnessProcessor:
             logger.warning(f"ROI enhancement failed: {e}")
             return roi
     
-    def detect_lighting_conditions(self, frame: np.ndarray) -> Dict:
+    def detect_lighting_conditions(self, frame: np.ndarray) -> dict:
         """Analyze lighting conditions for adaptive processing"""
         try:
             # Convert to grayscale for analysis
@@ -231,7 +231,7 @@ class BackgroundRobustnessProcessor:
         else:
             return "good"
     
-    def adapt_processing_parameters(self, lighting_conditions: Dict):
+    def adapt_processing_parameters(self, lighting_conditions: dict):
         """Adapt processing parameters based on lighting conditions"""
         if not lighting_conditions:
             return
