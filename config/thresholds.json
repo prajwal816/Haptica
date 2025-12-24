@@ -1,0 +1,42 @@
+{
+  "detection": {
+    "confidence_threshold": 0.7,
+    "stability_threshold": 0.8,
+    "hand_detection_confidence": 0.7
+  },
+  "state_machine": {
+    "detection_threshold": 0.7,
+    "confirmation_time_ms": 300,
+    "cooldown_time_ms": 1000,
+    "long_press_threshold_ms": 2000,
+    "debounce_frames": 5
+  },
+  "roi_calibration": {
+    "min_roi_size": [60, 60],
+    "max_roi_size": [200, 200],
+    "padding_factor": 0.3,
+    "smoothing_factor": 0.7,
+    "distance_smoothing_factor": 0.8
+  },
+  "background_robustness": {
+    "clahe_clip_limit": 3.0,
+    "clahe_tile_grid_size": [8, 8],
+    "motion_threshold": 0.05,
+    "skin_tone_lower_hsv": [0, 20, 70],
+    "skin_tone_upper_hsv": [20, 255, 255]
+  },
+  "performance": {
+    "target_fps": 30.0,
+    "max_queue_size": 10,
+    "max_inference_time_ms": 50,
+    "max_total_latency_ms": 100
+  },
+  "safety": {
+    "max_actions_per_second": 5,
+    "emergency_disable_gesture": "palm",
+    "emergency_disable_confidence": 0.9,
+    "auto_disable_on_low_confidence": true,
+    "low_confidence_threshold": 0.3,
+    "low_confidence_duration_ms": 5000
+  }
+}
