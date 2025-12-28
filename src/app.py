@@ -365,8 +365,13 @@ class EnhancedHapticaEngine:
     def _process_enhanced_frame(self, frame):
         """Process frame with all enhancements"""
         try:
-            # 1. Background robustness
-            enhanced_frame, processing_info = self.background_processor.enhance_frame(frame)
+            # 1. Background robustness (with fallback)
+            try:
+                enhanced_frame, processing_info = self.background_processor.enhance_frame(frame)
+            except Exception as e:
+                logger.warning(f"Background processing failed, using original frame: {e}")
+                enhanced_frame = frame
+                processing_info = {}
             
             # 2. Hand detection
             hands_info, annotated_frame = self.hand_detector.detect_hands(enhanced_frame)
@@ -376,43 +381,58 @@ class EnhancedHapticaEngine:
                 hand_info = hands_info[0]
                 original_bbox = hand_info.get('bbox')
                 
-                if original_bbox:
-                    # Get adaptive ROI
-                    adaptive_roi_bbox = self.roi_calibrator.get_adaptive_roi(
-                        original_bbox, frame.shape
-                    )
-                    
-                    # Update hand info with adaptive ROI
-                    x, y, w, h = adaptive_roi_bbox
-                    adaptive_roi = enhanced_frame[y:y+h, x:x+w]
-                    hand_info['adaptive_roi'] = adaptive_roi
-                    hand_info['adaptive_bbox'] = adaptive_roi_bbox
+                if original_bbox is not None:
+                    try:
+                        # Get adaptive ROI
+                        adaptive_roi_bbox = self.roi_calibrator.get_adaptive_roi(
+                            original_bbox, frame.shape
+                        )
+                        
+                        # Update hand info with adaptive ROI
+                        x, y, w, h = adaptive_roi_bbox
+                        
+                        # Ensure valid coordinates
+                        if (x >= 0 and y >= 0 and w > 0 and h > 0 and 
+                            x + w <= enhanced_frame.shape[1] and y + h <= enhanced_frame.shape[0]):
+                            adaptive_roi = enhanced_frame[y:y+h, x:x+w]
+                            hand_info['adaptive_roi'] = adaptive_roi
+                            hand_info['adaptive_bbox'] = adaptive_roi_bbox
+                    except Exception as e:
+                        logger.warning(f"Adaptive ROI processing failed: {e}")
+                        # Fallback to original ROI
+                        pass
             
             # 4. Gesture prediction
             prediction = {'gesture': 'none', 'confidence': 0.0, 'is_stable': False}
             
             if hands_info:
                 hand_info = hands_info[0]
-                roi = hand_info.get('adaptive_roi') or hand_info.get('roi')
+                roi = hand_info.get('adaptive_roi')
+                if roi is None:
+                    roi = hand_info.get('roi')
                 
-                if roi is not None:
-                    # Enhanced ROI processing
-                    enhanced_roi = self.background_processor.enhance_roi(roi)
-                    processed_tensor = self.transforms.preprocess_roi(enhanced_roi)
-                    
-                    if processed_tensor is not None:
-                        raw_prediction = self.predictor.predict(processed_tensor)
+                if roi is not None and roi.size > 0:
+                    try:
+                        # Enhanced ROI processing
+                        enhanced_roi = self.background_processor.enhance_roi(roi)
+                        processed_tensor = self.transforms.preprocess_roi(enhanced_roi)
                         
-                        # Process through state machine
-                        gesture_event = GestureEvent(
-                            gesture=raw_prediction['gesture'],
-                            confidence=raw_prediction['confidence'],
-                            timestamp=time.time(),
-                            is_stable=raw_prediction.get('is_confident', False)
-                        )
-                        
-                        state_result = self.state_machine.process_gesture(gesture_event)
-                        prediction.update(state_result)
+                        if processed_tensor is not None:
+                            raw_prediction = self.predictor.predict(processed_tensor)
+                            
+                            # Process through state machine
+                            gesture_event = GestureEvent(
+                                gesture=raw_prediction['gesture'],
+                                confidence=raw_prediction['confidence'],
+                                timestamp=time.time(),
+                                is_stable=raw_prediction.get('is_confident', False)
+                            )
+                            
+                            state_result = self.state_machine.process_gesture(gesture_event)
+                            prediction.update(state_result)
+                    except Exception as e:
+                        logger.warning(f"Gesture prediction failed: {e}")
+                        # Keep default prediction
             
             # 5. Create enhanced overlay
             display_frame = self._create_enhanced_overlay(

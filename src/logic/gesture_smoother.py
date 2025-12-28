@@ -10,9 +10,10 @@ from loguru import logger
 class GestureSmoother:
     """Temporal smoothing and debouncing for stable gesture recognition"""
     
-    def __init__(self, window_size: int = 5, debounce_time: float = 0.5):
+    def __init__(self, window_size: int = 10, debounce_time: float = 0.5, consecutive_frames: int = 7):
         self.window_size = window_size
         self.debounce_time = debounce_time
+        self.consecutive_frames = consecutive_frames  # FIX 5: Require N consecutive frames
         
         # Rolling window for predictions
         self.prediction_window = deque(maxlen=window_size)
@@ -23,11 +24,11 @@ class GestureSmoother:
         self.gesture_start_time = 0
         self.stable_count = 0
         
-        logger.info(f"Gesture smoother initialized: window={window_size}, debounce={debounce_time}s")
+        logger.info(f"Gesture smoother initialized: window={window_size}, debounce={debounce_time}s, consecutive={consecutive_frames}")
     
     def process_prediction(self, prediction: Dict) -> Dict:
         """
-        Process raw prediction through smoothing pipeline
+        Process raw prediction through smoothing pipeline with stronger temporal confirmation
         
         Args:
             prediction: Raw prediction from model
@@ -45,8 +46,8 @@ class GestureSmoother:
             'is_confident': prediction['is_confident']
         })
         
-        # Apply smoothing
-        smoothed_gesture = self._apply_temporal_smoothing()
+        # Apply temporal smoothing with consecutive frame requirement
+        smoothed_gesture = self._apply_temporal_smoothing_strict()
         
         # Apply debouncing
         final_gesture = self._apply_debouncing(smoothed_gesture, current_time)
@@ -55,40 +56,51 @@ class GestureSmoother:
         result = {
             'gesture': final_gesture,
             'confidence': prediction['confidence'],
-            'is_stable': self._is_gesture_stable(final_gesture),
+            'is_stable': self._is_gesture_stable_strict(final_gesture),
             'raw_gesture': prediction['gesture'],
             'smoothed_gesture': smoothed_gesture,
             'window_size': len(self.prediction_window),
+            'consecutive_count': self._count_consecutive_frames(prediction['gesture']),
             'debounce_remaining': max(0, self.debounce_time - (current_time - self.last_gesture_time))
         }
         
         return result
     
-    def _apply_temporal_smoothing(self) -> str:
-        """Apply majority voting across time window"""
-        if not self.prediction_window:
-            return 'none'
-        
-        # Count confident predictions only
-        confident_predictions = [
-            p for p in self.prediction_window 
-            if p['is_confident'] and p['gesture'] != 'uncertain'
-        ]
-        
-        if not confident_predictions:
+    def _apply_temporal_smoothing_strict(self) -> str:
+        """Apply strict temporal smoothing requiring consecutive frames"""
+        if len(self.prediction_window) < self.consecutive_frames:
             return 'uncertain'
         
-        # Majority voting
-        gesture_counts = {}
-        for pred in confident_predictions:
-            gesture = pred['gesture']
-            gesture_counts[gesture] = gesture_counts.get(gesture, 0) + 1
+        # Get the last N frames
+        recent_frames = list(self.prediction_window)[-self.consecutive_frames:]
         
-        # Return most frequent gesture
-        if gesture_counts:
-            return max(gesture_counts, key=gesture_counts.get)
+        # Check if all recent frames have the same confident gesture
+        first_gesture = None
+        for frame in recent_frames:
+            if not frame['is_confident'] or frame['gesture'] in ['uncertain', 'none']:
+                return 'uncertain'
+            
+            if first_gesture is None:
+                first_gesture = frame['gesture']
+            elif frame['gesture'] != first_gesture:
+                return 'uncertain'
         
-        return 'uncertain'
+        # All consecutive frames agree on the same gesture
+        return first_gesture if first_gesture else 'uncertain'
+    
+    def _count_consecutive_frames(self, gesture: str) -> int:
+        """Count consecutive frames with the same gesture"""
+        if not self.prediction_window:
+            return 0
+        
+        count = 0
+        for frame in reversed(self.prediction_window):
+            if frame['gesture'] == gesture and frame['is_confident']:
+                count += 1
+            else:
+                break
+        
+        return count
     
     def _apply_debouncing(self, gesture: str, current_time: float) -> str:
         """Apply debouncing to prevent rapid gesture changes"""
@@ -114,23 +126,15 @@ class GestureSmoother:
             logger.debug(f"New gesture detected: {gesture}")
         
         return gesture
-    
-    def _is_gesture_stable(self, gesture: str) -> bool:
-        """Check if current gesture is stable"""
+        """Check if current gesture is stable with strict requirements"""
         if not gesture or gesture in ['none', 'uncertain']:
             return False
         
         # Count consecutive occurrences
-        consecutive_count = 0
-        for pred in reversed(self.prediction_window):
-            if pred['gesture'] == gesture and pred['is_confident']:
-                consecutive_count += 1
-            else:
-                break
+        consecutive_count = self._count_consecutive_frames(gesture)
         
-        # Consider stable if seen consistently
-        stability_threshold = min(3, self.window_size // 2)
-        return consecutive_count >= stability_threshold
+        # Require at least consecutive_frames for stability
+        return consecutive_count >= self.consecutive_frames
     
     def reset(self):
         """Reset smoother state"""
@@ -152,3 +156,38 @@ class GestureSmoother:
             'time_since_last': current_time - self.last_gesture_time,
             'debounce_active': (current_time - self.last_gesture_time) < self.debounce_time
         }
+    def _apply_debouncing(self, gesture: str, current_time: float) -> str:
+        """Apply debouncing to prevent rapid gesture changes"""
+        
+        # If same gesture, continue
+        if gesture == self.current_gesture:
+            return gesture
+        
+        # Check debounce time
+        time_since_last = current_time - self.last_gesture_time
+        
+        if time_since_last < self.debounce_time:
+            # Still in debounce period, return current gesture
+            return self.current_gesture if self.current_gesture else 'none'
+        
+        # New gesture detected, update state
+        if gesture != 'uncertain' and gesture != 'none':
+            self.current_gesture = gesture
+            self.last_gesture_time = current_time
+            self.gesture_start_time = current_time
+            self.stable_count = 1
+            
+            logger.debug(f"New gesture detected: {gesture}")
+        
+        return gesture
+    
+    def _is_gesture_stable_strict(self, gesture: str) -> bool:
+        """Check if current gesture is stable with strict requirements"""
+        if not gesture or gesture in ['none', 'uncertain']:
+            return False
+        
+        # Count consecutive occurrences
+        consecutive_count = self._count_consecutive_frames(gesture)
+        
+        # Require at least consecutive_frames for stability
+        return consecutive_count >= self.consecutive_frames

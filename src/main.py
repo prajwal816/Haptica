@@ -62,8 +62,12 @@ class HapticaEngine:
             labels_path = self.config_dir / "labels.json"
             self.predictor = GesturePredictor(str(self.model_path), str(labels_path))
             
-            # Gesture smoother
-            self.smoother = GestureSmoother(window_size=5, debounce_time=0.5)
+            # Gesture smoother with stronger temporal confirmation (FIX 5)
+            self.smoother = GestureSmoother(
+                window_size=10, 
+                debounce_time=0.5,
+                consecutive_frames=7  # Require 7 consecutive frames
+            )
             
             # Action mapper
             actions_path = self.config_dir / "actions.json"

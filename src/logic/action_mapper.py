@@ -46,7 +46,7 @@ class ActionMapper:
     
     def execute_action(self, gesture: str, confidence: float = 1.0) -> Dict:
         """
-        Execute action for recognized gesture
+        Execute action for recognized gesture with gesture grouping
         
         Args:
             gesture: Recognized gesture name
@@ -57,28 +57,49 @@ class ActionMapper:
         """
         current_time = time.time()
         
-        # Check if gesture has action mapping
-        if gesture not in self.actions:
+        # FIX 4: GESTURE GROUPING - Handle similar gestures
+        # Map similar gestures to the same action
+        gesture_groups = {
+            # Group ambiguous gestures together
+            'ok_group': ['ok', 'c_shape'],  # Both can trigger ENTER
+            'point_group': ['index', 'thumb'],  # Both can trigger CLICK
+            'fist_group': ['fist', 'fist_moved'],  # Both can trigger COPY
+            'palm_group': ['palm', 'palm_moved']  # Both can trigger SPACEBAR
+        }
+        
+        # Find which group this gesture belongs to
+        effective_gesture = gesture
+        for group_name, gestures in gesture_groups.items():
+            if gesture in gestures:
+                # Use the first gesture in the group as the canonical gesture
+                effective_gesture = gestures[0]
+                logger.debug(f"Gesture grouping: {gesture} -> {effective_gesture}")
+                break
+        
+        # Check if effective gesture has action mapping
+        if effective_gesture not in self.actions:
             return {
                 'executed': False,
                 'reason': 'no_mapping',
                 'gesture': gesture,
+                'effective_gesture': effective_gesture,
                 'timestamp': current_time
             }
         
-        # Check cooldown
-        last_time = self.last_action_time.get(gesture, 0)
+        # Check cooldown (use effective gesture for cooldown tracking)
+        last_time = self.last_action_time.get(effective_gesture, 0)
         if current_time - last_time < self.cooldown_time:
             return {
                 'executed': False,
                 'reason': 'cooldown',
                 'gesture': gesture,
+                'effective_gesture': effective_gesture,
                 'cooldown_remaining': self.cooldown_time - (current_time - last_time),
                 'timestamp': current_time
             }
         
         # Get action configuration
-        action_config = self.actions[gesture]
+        action_config = self.actions[effective_gesture]
         action_type = action_config.get('type', 'keyboard')
         action_command = action_config.get('action', '')
         
@@ -98,12 +119,13 @@ class ActionMapper:
                 logger.warning(f"Unknown action type: {action_type}")
             
             if success:
-                self.last_action_time[gesture] = current_time
-                logger.info(f"Action executed: {gesture} -> {action_command}")
+                self.last_action_time[effective_gesture] = current_time
+                logger.info(f"Action executed: {gesture} ({effective_gesture}) -> {action_command}")
             
             return {
                 'executed': success,
                 'gesture': gesture,
+                'effective_gesture': effective_gesture,
                 'action_type': action_type,
                 'action_command': action_command,
                 'confidence': confidence,
@@ -117,6 +139,7 @@ class ActionMapper:
                 'reason': 'execution_error',
                 'error': str(e),
                 'gesture': gesture,
+                'effective_gesture': effective_gesture,
                 'timestamp': current_time
             }
     

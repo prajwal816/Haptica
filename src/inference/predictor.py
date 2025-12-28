@@ -57,7 +57,7 @@ class GesturePredictor:
     
     def predict(self, input_tensor: np.ndarray) -> Dict:
         """
-        Make prediction on preprocessed input
+        Make prediction on preprocessed input with horizontal flip fallback
         
         Args:
             input_tensor: Preprocessed image tensor
@@ -70,7 +70,7 @@ class GesturePredictor:
             return self._empty_prediction()
         
         try:
-            # Make prediction
+            # Make initial prediction
             predictions = self.model.predict(input_tensor, verbose=0)
             
             # Get class probabilities
@@ -78,11 +78,35 @@ class GesturePredictor:
             predicted_class_idx = np.argmax(probabilities)
             confidence = float(probabilities[predicted_class_idx])
             
+            # FIX 3: HORIZONTAL FLIP FALLBACK for orientation mismatch
+            # If confidence is low, try horizontal flip
+            if confidence < 0.8:
+                # Create horizontally flipped version
+                flipped_tensor = input_tensor.copy()
+                flipped_tensor[0, :, :, 0] = np.fliplr(input_tensor[0, :, :, 0])
+                
+                # Make prediction on flipped image
+                flipped_predictions = self.model.predict(flipped_tensor, verbose=0)
+                flipped_probabilities = flipped_predictions[0]
+                flipped_class_idx = np.argmax(flipped_probabilities)
+                flipped_confidence = float(flipped_probabilities[flipped_class_idx])
+                
+                # Use flipped prediction if it's more confident
+                if flipped_confidence > confidence:
+                    probabilities = flipped_probabilities
+                    predicted_class_idx = flipped_class_idx
+                    confidence = flipped_confidence
+                    logger.debug(f"Used flipped prediction: {confidence:.3f} > {float(predictions[0][np.argmax(predictions[0])]):.3f}")
+            
             # Get gesture label
             gesture_label = self.labels.get(str(predicted_class_idx), f"unknown_{predicted_class_idx}")
             
             # Check confidence threshold
             is_confident = confidence >= self.confidence_threshold
+            
+            # DEBUG: Log raw predictions for debugging
+            logger.debug(f"Raw prediction - Class: {predicted_class_idx}, Confidence: {confidence:.3f}, Label: {gesture_label}")
+            logger.debug(f"Top 3 probabilities: {sorted(enumerate(probabilities), key=lambda x: x[1], reverse=True)[:3]}")
             
             result = {
                 'gesture': gesture_label if is_confident else 'uncertain',
